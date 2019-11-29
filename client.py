@@ -22,7 +22,6 @@ def sendMessage(client_socket, message, options = "SHOW"):
 
   lengthString = str(len(message)).zfill(4)
   makePacket = makePacket + lengthString + message
-  print(makePacket)
   client_socket.send(bytes(makePacket, "utf-8"))
 
  

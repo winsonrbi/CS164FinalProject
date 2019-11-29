@@ -123,6 +123,7 @@ def clientthread(client_socket):
           clients[client_socket][1] = "MENU"
           singlePass = True
           continue
+        print("MENU CHOICE: " + message["message"])
       if(clients[client_socket][1] == "MENU"):
         continue
 
@@ -141,10 +142,8 @@ def clientthread(client_socket):
       if(clients[client_socket][1] == "CHAT"):
         sendMessage(client_socket, "Available Clients","DISP")
         combineString = ''
-        i = 0
         for key,value in clients.items():
-          i = i + 1
-          combineString = combineString + str(i) + ". "  +value[0]  + " \n"
+          combineString = combineString + value[0]  + " \n"
         sendMessage(client_socket,combineString,"DISP")
         inChat.append(client_socket)
         clients[client_socket][1] = "MESSENGER"
@@ -152,13 +151,13 @@ def clientthread(client_socket):
       if(clients[client_socket][1] == "MESSENGER"):
           sendMessage(client_socket, "Enter Message(or :update): ")
           messsage = receiveMessage(client_socket)
-          print( "WHAT I RECEIVED: " + message["message"])
           if(message["message"] == ":update"):
             continue
           for user_socket in inChat:
             if( client_socket != user_socket):
-              sendMessage(user_socket, message['message'])
-            
+              sendMessage(user_socket, "Hello, this is a test")
+          singlePass = True
+
 while 1: 
   client_socket, client_address = server_socket.accept()
   start_new_thread(clientthread, (client_socket,))
