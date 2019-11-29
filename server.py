@@ -3,7 +3,6 @@ import select
 import in_place
 from _thread import * 
 #USERS
-users = { "john" : "123" , "sally" : "password" , "bill" : "password"}
 def verifyUser(userName):
   userName = "USER=" + userName
   with open("users.txt") as f:
@@ -37,12 +36,14 @@ def receiveMessage(s):
   full_message = ''
   length = 0
   packet = s.recv(8).decode("utf-8")
+  print(packet)
   header = packet [:4]
   if(packet[4:8] == '0000'):
     #returned nothing
     return{ 'header' : header, 'length' : 0 , 'message' : 'empty_string'}
   length = int(packet [4:8])
   full_message = s.recv(length).decode("utf-8")
+  print(full_message)
   return { 'header' : header , 'length' : length , 'message' : full_message}
 
 def sendMessage(client_socket, message, options = "SHOW"):
@@ -68,8 +69,10 @@ server_socket.listen(5)#queue of 5
 sockets_list = [server_socket]
 clients = {}
 print("Server Started")
+inChat = list()
 
 def clientthread(client_socket):
+  global inChat
   global clients
   singlePass = False
   userName = None
@@ -143,7 +146,21 @@ def clientthread(client_socket):
           i = i + 1
           combineString = combineString + str(i) + ". "  +value[0]  + " \n"
         sendMessage(client_socket,combineString,"DISP")
-    
+        inChat.append(client_socket)
+        clients[client_socket][1] = "MESSENGER"
+
+      if(clients[client_socket][1] == "MESSENGER"):
+          sendMessage(client_socket, "Enter Message(or :update): ")
+          messsage = receiveMessage(client_socket)
+          print( "WHAT I RECEIVED: " + message["message"])
+          message = receiveMessage(client_socket)
+          print(message)
+          if(message["message"] == ":update"):
+            continue
+          for user_socket in inChat:
+            if( client_socket != user_socket):
+              sendMessage(user_socket, message['message'])
+            
 while 1: 
   client_socket, client_address = server_socket.accept()
   start_new_thread(clientthread, (client_socket,))
