@@ -153,8 +153,6 @@ def clientthread(client_socket):
           sendMessage(client_socket, "Enter Message(or :update): ")
           messsage = receiveMessage(client_socket)
           print( "WHAT I RECEIVED: " + message["message"])
-          message = receiveMessage(client_socket)
-          print(message)
           if(message["message"] == ":update"):
             continue
           for user_socket in inChat:
