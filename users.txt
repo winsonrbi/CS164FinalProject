@@ -1,0 +1,2 @@
+USER=john : PASS=password
+USER=bill : PASS=12

@@ -1,14 +1,18 @@
 import socket
 import getpass
+import sys
 
 def receiveMessage(s):
   full_message = ''
   length = 0
-  packet = s.recv(8).decode("utf-8")
-  header = packet [:4]
-  length = int(packet [4:8])
-  full_message = s.recv(length).decode("utf-8")
-  return { 'header' : header , 'length' : length , 'message' : full_message}
+  try:
+    packet = s.recv(8).decode("utf-8")
+    header = packet [:4]
+    length = int(packet [4:8])
+    full_message = s.recv(length).decode("utf-8")
+    return { 'header' : header , 'length' : length , 'message' : full_message}
+  except:
+    sys.exit("Connection Closed")        
 
 def sendMessage(client_socket, message, options = "SHOW"):
   #packet is made here

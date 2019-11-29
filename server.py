@@ -1,14 +1,36 @@
 import socket
 import select
+import in_place
 from _thread import * 
 #USERS
-users = { "john" : "123" , "sally" : "password" , "bill" : "root"}
+users = { "john" : "123" , "sally" : "password" , "bill" : "password"}
+def verifyUser(userName):
+  userName = "USER=" + userName
+  with open("users.txt") as f:
+    searchlines = f.readlines()
+    for i, line in enumerate(searchlines):
+      if userName in line:
+        return True
+  return False
 
-def menuPrompt(s):
-  s.send(bytes("Menu Options: ", "utf-8"))
-  s.send(bytes("1. Chat ", "utf-8"))
-  s.send(bytes("2. Change Password ", "utf-8"))
-  s.send(bytes("2. Logout ", "utf-8"))
+def verifyPassword(userName,password):
+  searchTarget = "USER=" + userName + " : " + "PASS=" + password
+  with open("users.txt") as f:  
+    searchlines = f.readlines()
+    for i, line in enumerate(searchlines):
+      if searchTarget in line:
+        return True
+  return False
+
+def changePassword(userName,oldPassword,newPassword):
+  searchTarget = "USER=" + userName + " : " + "PASS=" + oldPassword + '\n'
+  replaceTarget = "USER=" + userName + " : " + "PASS=" + newPassword + '\n'
+  with in_place.InPlace('users.txt') as fp:
+    for line in fp:
+      if(line == searchTarget):
+        fp.write(''.join(replaceTarget))
+      else:
+        fp.write(''.join(c for c in line))
 
 #listen forever
 def receiveMessage(s):
@@ -37,10 +59,6 @@ def sendMessage(client_socket, message, options = "SHOW"):
   makePacket = makePacket + lengthString + message
   client_socket.send(bytes(makePacket, "utf-8"))
 
-def login(client_socket):
-  sendMessage(client_socket,"Login: ")
-  
-
 server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 #binds socket to ip and port 2715
@@ -53,26 +71,33 @@ print("Server Started")
 
 def clientthread(client_socket):
   global clients
+  singlePass = False
+  userName = None
   sendMessage(client_socket,"Login: ")
   user = receiveMessage(client_socket)
   if user is False:
     return
-  if(user["message"] in users):
+  if(verifyUser(user["message"])):
     clients[client_socket] =[user["message"],"OUT"]
+    userName = user["message"]
     print("Connection from {} - {}:{} has been established!".format(user["message"],client_address[0],client_address[1]))
     sendMessage(client_socket, "Password: " , "HIDE")
   else:
     sendMessage(client_socket, "Invalid Username, Goodbyte","DISP")
-    client_socket.close()  
+    client_socket.close() 
+    return 
   while(1):
-      message = receiveMessage(client_socket)
+      if(singlePass == False):
+        message = receiveMessage(client_socket)
+      else:
+        singlePass = False
       if message is False:
         print("Connection closed from {}".format(clients[client_socket][0]))
         del clients[client_socket]
         return
         continue
       if(clients[client_socket][1] == "OUT"):
-        if(message["message"] == users[clients[client_socket][0]]):
+        if(verifyPassword(userName, message["message"])):
           sendMessage(client_socket,"Welcome to Win-Chat","DISP")
           clients[client_socket][1] = "MENU"
         else:
@@ -84,26 +109,40 @@ def clientthread(client_socket):
         message = receiveMessage(client_socket)
         if(message["message"] == "1"):
           clients[client_socket][1] = "CHAT"
-        if(message["message"] == "2"):
+        elif(message["message"] == "2"):
           clients[client_socket][1] = "CHANGE_PASS"
-        if(message['message'] == '3'):
+        elif(message['message'] == '3'):
           del clients[client_socket]
           sendMessage(client_socket, "Logging Out, Good Byte","DISP")
           client_socket.close()
           return
+        else:
+          clients[client_socket][1] = "MENU"
+          singlePass = True
+          continue
+      if(clients[client_socket][1] == "MENU"):
+        continue
+
+  
       if(clients[client_socket][1] == "CHANGE_PASS"):
           sendMessage(client_socket, "Enter Current Password: " , "HIDE")
           currPass = receiveMessage(client_socket)["message"]
-          if(currPass == users[clients[client_socket][0]]):
+          if(verifyPassword(userName,currPass)):
             sendMessage(client_socket, "Enter New Password: " , "HIDE")
             newPass = receiveMessage(client_socket)
-            users[clients[client_socket][0]] = newPass
+            changePassword(userName,currPass,newPass["message"])
           else:
             sendMessage(client_socket, "Wrong Password", "DISP")
           clients[client_socket][1] = "MENU"
           sendMessage(client_socket, "Hit [Enter]  to Continue")
       if(clients[client_socket][1] == "CHAT"):
         sendMessage(client_socket, "Available Clients","DISP")
+        combineString = ''
+        i = 0
+        for key,value in clients.items():
+          i = i + 1
+          combineString = combineString + str(i) + ". "  +value[0]  + " \n"
+        sendMessage(client_socket,combineString,"DISP")
     
 while 1: 
   client_socket, client_address = server_socket.accept()
