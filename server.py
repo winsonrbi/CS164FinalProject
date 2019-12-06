@@ -65,6 +65,9 @@ class User:
     
     return count
   
+  def get_client_socket(self):
+    return self.client_socket
+ 
   def get_friends_list(self):
     return self.friends_list
 
@@ -177,8 +180,6 @@ def get_user(userName):
   global user_list
   
   for user in user_list:
-    print(user.get_username)
-    print(userName)
     if(user.get_username() == userName):
       return user
 
@@ -186,6 +187,7 @@ def get_user(userName):
 
 is_online = []
 user_list = create_users()
+print("USERS AND PASSWORDS")
 for user in user_list:
   print(user.get_username() + " " + user.get_password())
 server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -313,8 +315,16 @@ def clientthread(client_socket):
             targetString = targetString + str(i) + ". "+ user.get_username() +"\n"
           sendMessage(client_socket,targetString,"DISP")
           sendMessage(client_socket, "Message: ")
-  except:
-    print("Connection was dropped")
+          broadcast_message = "[BROADCAST FROM: " + userName +"] - "
+          broadcast_message = broadcast_message +  receiveMessage(client_socket)["message"]
+          
+          for user in is_online:
+            sendMessage(user.get_client_socket(),broadcast_message,"DISP")
+          clients[client_socket][1] = "MENU"
+          sendMessage(client_socket,"Press [Enter] to Continue")
+  except Exception as e:
+    print("Connection was dropped from " + userName)
+    print(e)
     try:
       is_online.remove(get_user(userName))
     except:
@@ -322,6 +332,5 @@ def clientthread(client_socket):
 while 1: 
   client_socket, client_address = server_socket.accept()
   start_new_thread(clientthread, (client_socket,))
-  print("WE BACK AT IT")   
   #display menu prompt only when user successfully logs in
   #menuPrompt(clientsocket)
