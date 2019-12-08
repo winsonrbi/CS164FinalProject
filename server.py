@@ -43,8 +43,21 @@ class User:
     self.mailbox = []
     self.friends_list=[]
     self.friend_requests_list=[]
+    self.timeline=[]
     self.client_socket = ""
-
+  
+  def add_update(self,update):
+      update = update + "\n"
+      self.timeline.append(update)
+  def get_timeline(self):
+      print(self.username)
+      combineString = "[ " + self.username + " ] \n"
+      i = 0
+      for update in self.timeline:
+        i = i + 1
+        combineString = combineString +  " " + str(i) + ". " + update
+      print(combineString)
+      return combineString  
   def add_client_socket(self,client_socket):
     self.client_socket = client_socket
   
@@ -53,9 +66,10 @@ class User:
   
   def add_friend(self,friend):
     self.friends_list.append(friend)
+    self.friend_requests_list.remove(friend)
   
   def add_friend_request(self,friend_request):
-    self.friend_requests.append(friend_request)
+    self.friend_requests_list.append(friend_request)
 
   def get_unread_message_count(self):
     count = 0
@@ -72,7 +86,7 @@ class User:
     return self.friends_list
 
   def get_friend_requests(self):
-    return self.friends_requests_list
+    return self.friend_requests_list
 
   def get_mailbox(self):
     return self.mailbox
@@ -240,7 +254,7 @@ def clientthread(client_socket):
           else:
             sendMessage(client_socket, "Invalid Password, Goodbyte","DISP")
         if(clients[client_socket][1] == "MENU"):
-          sendMessage(client_socket,"Menu: \n 1. Send Message \n 2. View Mailbox \n 3. Broadcast \n 4. Change Password \n 5. Logout \n Choice: ")
+          sendMessage(client_socket,"Menu: \n 1. Send Message \n 2. View Mailbox \n 3. Broadcast \n 4. Change Password \n 5. Add Update \n 6. Friends and Timelines \n 7. Friend Requests \n 8. Add Friends \n 9. Logout \n Choice: ")
           clients[client_socket][1] = "MENU_CHOICE"
         if(clients[client_socket][1] == "MENU_CHOICE"):
           message = receiveMessage(client_socket)
@@ -252,7 +266,15 @@ def clientthread(client_socket):
             clients[client_socket][1] = "BROADCAST"
           elif(message["message"] == "4"):
             clients[client_socket][1] = "CHANGE_PASS"
-          elif(message['message'] == '5'):
+          elif(message["message"] == "5"):
+            clients[client_socket][1] = "ADD_UPDATE"
+          elif(message["message"] == "6"):
+            clients[client_socket][1] = "TIMELINES"
+          elif(message["message"] == "7"):
+            clients[client_socket][1] = "FRIEND_REQUESTS"
+          elif(message["message"] == '8'):
+            clients[client_socket][1] = "ADD_FRIENDS"
+          elif(message['message'] == '9'):
             del clients[client_socket]
             sendMessage(client_socket, "Logging Out, Good Byte","DISP")
             del clients[client_socket]
@@ -278,7 +300,7 @@ def clientthread(client_socket):
             else:
               sendMessage(client_socket, "Wrong Password", "DISP")
             clients[client_socket][1] = "MENU"
-            sendMessage(client_socket, "Hit [Enter]  to Continue")
+            sendMessage(client_socket, " Hit [Enter]  to Continue")
         if(clients[client_socket][1] == "SEND_MESSAGE"):
           sendMessage(client_socket, "USERS: ", "DISP")
           sendMessage(client_socket,get_all_users(),"DISP")
@@ -322,6 +344,55 @@ def clientthread(client_socket):
             sendMessage(user.get_client_socket(),broadcast_message,"DISP")
           clients[client_socket][1] = "MENU"
           sendMessage(client_socket,"Press [Enter] to Continue")
+          continue
+        if(clients[client_socket][1] == "ADD_UPDATE"):
+          sendMessage(client_socket, "Add Update  to Timeline: ")
+          update = receiveMessage(client_socket)["message"]
+          get_user(userName).add_update(update)
+          sendMessage(client_socket, "Added update, hit [ENTER] to continue")
+          clients[client_socket][1] = "MENU"
+          continue
+      
+        if(clients[client_socket][1] == "TIMELINES"):
+          combineString = ""
+          for user in get_user(userName).get_friends_list():
+           combineString = combineString + get_user(user).get_timeline() + "\n"
+          sendMessage(client_socket,combineString)
+          sendMessage(client_socket, "Hit [ENTER] to continue")
+          clients[client_socket][1] = "MENU"
+          continue
+        if(clients[client_socket][1] == "FRIEND_REQUESTS"):
+          i = 0
+          combineString = ""
+          for friend in get_user(userName).get_friend_requests():
+            i = i + 1
+            combineString = combineString + str(i) + ". " + friend + "\n"
+          sendMessage(client_socket, combineString, "DISP")
+          sendMessage(client_socket, "Type name to add: ")
+          friend_to_add = receiveMessage(client_socket)["message"]
+          if(friend_to_add in get_user(userName).get_friend_requests()):
+            get_user(userName).add_friend(friend_to_add)
+            combineString = "Added " + friend_to_add + " Hit [ENTER] to continue"
+            sendMessage(client_socket, combineString)
+          else:
+            sendMessage(client_socket, "Couldn't Find the User, Hit [ENTER] to continue")
+          clients[client_socket][1] = "MENU"
+          continue
+        if(clients[client_socket][1] == "ADD_FRIENDS"):
+          i = 0
+          combineString = ""
+          for user in user_list:
+            i = i + 1
+            combineString = combineString + str(i) + ". " + user.get_username() + "\n"
+          sendMessage(client_socket, combineString,"DISP")
+          sendMessage(client_socket, "Type name to add: ")
+          friend_to_add = receiveMessage(client_socket)["message"]
+          friend_to_add =  get_user(friend_to_add)
+          friend_to_add.add_friend_request(userName)
+          sendMessage(client_socket, "Friend Request Sent, Press [Enter] to Continue")
+          clients[client_socket][1] = "MENU"
+          continue
+
   except Exception as e:
     print("Connection was dropped from " + userName)
     print(e)
